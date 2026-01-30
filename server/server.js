@@ -26,6 +26,10 @@ app.use(cors({
 
 app.use(express.json())
 
+app.get("/", (req, res) => {
+    res.send("Server live")
+})
+
 
 app.use('/api', authRouter)
 app.use('/api/profile', profileRouter)
