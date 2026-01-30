@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RankingTier {
+  TOP_10
+  TOP_25
+  TOP_50
+  TOP_100
+}
+
+enum CompetitionLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum RiskLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model User {
+  id                 Int     @id @default(autoincrement())
+  name               String
+  email              String  @unique
+  password           String
+  currentStage       Int     @default(1)
+  onboardingComplete Boolean @default(false)
+
+  lockedUniversityId Int?
+  lockedUniversity   University? @relation("LockedUniversity", fields: [lockedUniversityId], references: [id])
+
+  profile   Profile?
+  tasks     Task[]
+  shortlist Shortlist[]
+}
+
+model Profile {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique
+  educationLevel String
+  major          String
+  graduationYear Int
+  gpa            Float?
+  targetDegree   String
+  field          String
+  intakeYear     Int
+  countries      String[]
+  budgetRange    String
+  fundingType    String
+  ieltsStatus    String
+  greStatus      String
+  sopStatus      String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model University {
+  id                  Int              @id @default(autoincrement())
+  name                String
+  country             String
+  city                String
+  ranking             Int
+  tuitionFee          Int
+  avgCost             Int
+  acceptanceChance    Int
+  rankingTier         RankingTier
+  competitionLevel    CompetitionLevel
+  riskLevel           RiskLevel
+  imageUrl            String
+  applicationDeadline DateTime
+
+  shortlist     Shortlist[]
+  lockedByUsers User[]      @relation("LockedUniversity")
+}
+
+model Shortlist {
+  id           Int     @id @default(autoincrement())
+  userId       Int
+  universityId Int
+  category     String
+  locked       Boolean @default(false)
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, universityId])
+}
+
+model Task {
+  id     Int    @id @default(autoincrement())
+  userId Int
+  title  String
+  status String @default("PENDING")
+  stage  Int
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+model TimelineEvent {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  universityId Int
+  title       String
+  description String?
+  date        DateTime
+  status      String   // completed | upcoming | missed
+  stage       Int
+  createdAt   DateTime @default(now())
+}
+
