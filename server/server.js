@@ -42,3 +42,16 @@ app.use('/api/timeline', timelineRouter)
 
 
 app.listen(PORT, () => console.log(`Server running on port http://localhost:${PORT}`));
+
+
+
+/*
+
+"scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "prisma generate",
+    "postinstall": "npx prisma generate",
+    "start": "node server.js",
+    "seed": "node prisma/seed.js"
+  },
+  */
