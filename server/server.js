@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 5000;
 const app = express()
 
 const allowedOrigins = [
-    'http://localhost:5173'
+    'http://localhost:5173', 'https://ai-counsellor-htmf.vercel.app'
 ]
 
 app.use(cors({
