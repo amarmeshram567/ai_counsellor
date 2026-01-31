@@ -1,5 +1,5 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../prisma/prisma.config");
+
 
 exports.getDashboard = async (req, res) => {
     const user = await prisma.user.findUnique({

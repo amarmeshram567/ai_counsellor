@@ -1,5 +1,5 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../prisma/prisma.config");
+
 
 exports.aiAction = async (req, res) => {
     try {

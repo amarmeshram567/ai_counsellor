@@ -1,5 +1,7 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("./prisma.config");
+const { Pool } = require("pg");
+require("dotenv").config();
+
 
 const universities = [
     {
@@ -134,135 +136,72 @@ const universities = [
     },
 ];
 
-function rankingTier(rank) {
-    if (rank <= 10) return "TOP_10";
-    if (rank <= 25) return "TOP_25";
-    if (rank <= 50) return "TOP_50";
-    return "TOP_100";
+
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+});
+
+async function clearTables() {
+    const client = await pool.connect();
+    try {
+        console.log("🌱 Clearing tables with raw PG client...");
+        await client.query('TRUNCATE TABLE "Shortlist" CASCADE;');
+        await client.query('TRUNCATE TABLE "TimelineEvent" CASCADE;');
+        await client.query('TRUNCATE TABLE "Task" CASCADE;');
+        await client.query('TRUNCATE TABLE "University" CASCADE;');
+        await client.query('TRUNCATE TABLE "User" CASCADE;');
+        console.log("✅ Tables cleared");
+    } finally {
+        client.release();
+    }
 }
 
-function competitionLevel(chance) {
-    if (chance < 50) return "HIGH";
-    if (chance < 70) return "MEDIUM";
-    return "LOW";
-}
-
-async function seed() {
+async function seedUniversities(prisma, universities) {
     console.log("🌱 Seeding universities...");
 
-    // 🔥 IMPORTANT: delete child table first
-    await prisma.shortlist.deleteMany();
-    await prisma.university.deleteMany();
+    const data = universities.map((uni) => ({
+        name: uni.name,
+        country: uni.country,
+        city: uni.city,
+        ranking: uni.ranking,
+        tuitionFee: uni.tuitionFee,
+        avgCost: uni.tuitionFee,
+        acceptanceChance: uni.acceptanceChance,
+        riskLevel: uni.riskLevel.toUpperCase(),
+        imageUrl: uni.imageUrl,
+        applicationDeadline: new Date(uni.applicationDeadline),
+        rankingTier:
+            uni.ranking <= 10
+                ? "TOP_10"
+                : uni.ranking <= 25
+                    ? "TOP_25"
+                    : uni.ranking <= 50
+                        ? "TOP_50"
+                        : "TOP_100",
+        competitionLevel:
+            uni.acceptanceChance < 50
+                ? "HIGH"
+                : uni.acceptanceChance < 70
+                    ? "MEDIUM"
+                    : "LOW",
+    }));
 
-    for (const uni of universities) {
-        await prisma.university.create({
-            data: {
-                name: uni.name,
-                country: uni.country,
-                city: uni.city,
-                ranking: uni.ranking,
-                tuitionFee: uni.tuitionFee,
-                avgCost: uni.tuitionFee,
-                acceptanceChance: uni.acceptanceChance,
-                riskLevel: uni.riskLevel.toUpperCase(), // ✅ FIX
-                imageUrl: uni.imageUrl,
-                applicationDeadline: new Date(uni.applicationDeadline),
-                rankingTier: rankingTier(uni.ranking),
-                competitionLevel: competitionLevel(uni.acceptanceChance),
-            },
-        });
-
-    }
-
+    await prisma.university.createMany({ data });
     console.log("✅ Universities seeded successfully");
 }
 
-seed()
-    .catch((e) => {
-        console.error(e);
-        process.exit(1);
-    })
-    .finally(async () => {
+async function seed(prisma, universities) {
+    try {
+        await clearTables();
+        await seedUniversities(prisma, universities);
+    } catch (err) {
+        console.error("❌ Seeding failed:", err);
+    } finally {
         await prisma.$disconnect();
-    });
-
-
-
-/*
- 
-model User {
-id                 Int        @id @default(autoincrement())
-name               String
-email              String     @unique
-password           String
-currentStage       Int        @default(1)
-onboardingComplete Boolean    @default(false)
-lockedUniversityId Int?
-
-profile   Profile?
-tasks     Task[]
-shortlist Shortlist[]
+        await pool.end();
+    }
 }
 
-model Profile {
-id             Int      @id @default(autoincrement())
-userId         Int      @unique
-educationLevel String
-major          String
-graduationYear Int
-gpa            Float?
-targetDegree   String
-field          String
-intakeYear     Int
-countries      String[]
-budgetRange    String
-fundingType    String
-ieltsStatus    String
-greStatus      String
-sopStatus      String
-
-user User @relation(fields: [userId], references: [id])
-}
-
-model University {
-id               Int         @id @default(autoincrement())
-name             String
-country          String
-avgCost          Int
-rankingTier      String
-competitionLevel String
-city             String
-ranking          Int
-tuitionFee       Int
-acceptanceChance Int
-riskLevel        String
-imageUrl         String
-applicationDeadline DateTime
-
-
-shortlist Shortlist[]
-}
-
-model Shortlist {
-id           Int     @id @default(autoincrement())
-userId       Int
-universityId Int
-category     String
-locked       Boolean @default(false)
-
-user       User       @relation(fields: [userId], references: [id])
-university University @relation(fields: [universityId], references: [id])
-
-@@unique([userId, universityId])
-}
-
-model Task {
-id     Int    @id @default(autoincrement())
-userId Int
-title  String
-status String @default("PENDING")
-stage  Int
-
-user User @relation(fields: [userId], references: [id])
-}
-*/
+// ✅ Call the seed function immediately
+seed(prisma, universities);

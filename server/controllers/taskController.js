@@ -1,5 +1,5 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../prisma/prisma.config");
+
 
 exports.getTasks = async (req, res) => {
     const tasks = await prisma.task.findMany({ where: { userId: req.user.id } });
